@@ -19,11 +19,11 @@ class SignupViewController: UIViewController {
     @IBOutlet var repeatPass: UITextField!
     @IBOutlet var fullnameField: UITextField!
     @IBOutlet var bioField: UITextField!
-    @IBOutlet var webField: UITextField!
+   // @IBOutlet var webField: UITextField!
     
     @IBAction func onSignup(_ sender: Any) {
         
-        if (emailField.text?.isEmpty)! || (usernameField.text?.isEmpty)! || (passwordField.text?.isEmpty)! || (repeatPass.text?.isEmpty)! || (bioField.text?.isEmpty)! || (fullnameField.text?.isEmpty)! || (webField.text?.isEmpty)!{
+        if (emailField.text?.isEmpty)! || (usernameField.text?.isEmpty)! || (passwordField.text?.isEmpty)! || (repeatPass.text?.isEmpty)! || (fullnameField.text?.isEmpty)! {
             
             self.alertControl(title: "Instagram", message: "Please fill all fields!")
         } else {
@@ -39,8 +39,12 @@ class SignupViewController: UIViewController {
                 newUser.password = passwordField.text
                 newUser.username = usernameField.text
                 newUser["fullname"] = fullnameField.text?.lowercased()
+                
+                if (bioField.text?.isEmpty)! {
+                    bioField.text = ""
+                }
                 newUser["bio"] = bioField.text?.lowercased()
-                newUser["web"] = webField.text?.lowercased()
+                //newUser["web"] = webField.text?.lowercased()
                 
                 
                 
@@ -68,6 +72,29 @@ class SignupViewController: UIViewController {
                         
                         UserDefaults.standard.set(newUser.username, forKey: "username")
                         UserDefaults.standard.synchronize()
+                        
+                        let userQuery = PFQuery(className: "_User")
+                        userQuery.findObjectsInBackground (block: { (objects, error) -> Void in
+                            if error == nil {
+                                // clean up
+                                // find related objects
+                                for object in objects! {
+                                    if object["username"]! as? String == newUser.username {
+                                        
+                                        let imageName = "pp.jpg"
+                                        let image = UIImage(named: imageName)
+
+                                        let imageData = UIImageJPEGRepresentation(image!, 0.5)
+                                        let imageFile = PFFile(name: "ava.jpg", data: imageData!)
+                                
+                                        object["ava"] = imageFile
+                                        object.saveInBackground()
+                                    }
+                                }
+                                
+                            }
+                            
+                        })
                         //self.performSegue(withIdentifier: "showHomepage", sender: self)
                         let appDelegate : AppDelegate = UIApplication.shared.delegate as! AppDelegate
                         appDelegate.login()

@@ -8,6 +8,7 @@
 
 import UIKit
 import Parse
+import Foundation
 
 class HomeViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
     
@@ -17,9 +18,13 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     var imageFiles = [PFFile]()
     var check = 0
     var avaArray = [PFFile]()
-    
-   
-    
+    var timeStampArray = [String]()
+    let date = Date()
+    var currentDate: String?
+    var currentMonthAndDay: String?
+    var resultHour: String?
+    var resultMin: String?
+
     
     @IBOutlet var tableview: UITableView!
 
@@ -29,7 +34,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
         // Do any additional setup after loading the view.
         tableview.delegate = self
         tableview.dataSource = self
-        
+        prepareDateAndHour()
         
         //let query = PFUser.query()
         
@@ -40,6 +45,95 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             
             
         
+    }
+    
+    func convertToLocalTime (utcTime:Date) -> (String) {
+        
+        var ret = ""
+        print ("UTC time is \(utcTime)")
+        let stringTemp = String(describing: utcTime)
+        let nsStringTime = NSString(string: stringTemp)
+        let dateAndHour = nsStringTime.components(separatedBy: " ")
+        
+        
+        //print (dateAndHour[1].components(separatedBy: ":"))
+        
+        let postHour = dateAndHour[1].components(separatedBy: ":")[0]
+        let postMin = dateAndHour[1].components(separatedBy: ":")[1]
+        
+        let hourDiff = Int(resultHour!)! - abs(Int(postHour)! - 7)
+        //posts fall on the current day
+        if dateAndHour[0] == currentDate && hourDiff >= 0 {
+            
+            //post fall on current hour we should display minute
+            if abs(Int(postHour)! - 7) == (Int(resultHour!)!) {
+                
+                ret =  "\(Int(resultMin!)! - Int(postMin)!)m ago"
+                
+            } else {
+                
+                //fall on different hour we substract the current hour by the posted hour to get hour
+                ret =  "\((Int(resultHour!)!) - abs(Int(postHour)! - 7))h ago"
+                
+            }
+        } else {
+            
+            //fall on different day
+            ret =  getMonth(diff: Int(postHour)! - 7, month: dateAndHour[0].components(separatedBy: "-")[1], date:dateAndHour[0].components(separatedBy: "-")[2])
+        }
+        print ("ret is \(ret)")
+        return ret
+    }
+    
+    func getMonth(diff: Int, month:String, date:String) -> (String) {
+        
+        var ret = ""
+        var monthLetter = ""
+        
+        switch month {
+        case "01":
+            monthLetter = "Jan"
+        case "02":
+            monthLetter = "Feb"
+        case "03":
+            monthLetter = "Mar"
+        case "04":
+            monthLetter = "April"
+        case "05":
+            monthLetter = "May"
+        case "06":
+            monthLetter = "Jun"
+        case "07":
+            monthLetter = "Jul"
+        case "08":
+            monthLetter = "Aug"
+        case "09":
+            monthLetter = "Sept"
+        case "10":
+            monthLetter = "Oct"
+        case "01":
+            monthLetter = "Nov"
+        default:
+            monthLetter = "Dec"
+        }
+        
+        //diferent day between different zone time, moving back one day
+        if diff < 0 {
+            
+            var dateInt = Int(date)!
+            
+            dateInt = dateInt - 1
+            
+            ret =  "\(monthLetter) \(String(describing: dateInt))"
+            
+        } else {
+            
+            ret = "\(monthLetter) \(date)"
+            
+        }
+        
+        
+        return ret
     }
     @IBAction func onLogout(_ sender: Any) {
         
@@ -57,7 +151,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     func getData() {
         
         let userQuery = PFUser.query()
-        userQuery?.order(byDescending: "createdAt")
+        //userQuery?.order(byDescending: "createdAt")
         
          userQuery?.findObjectsInBackground(block: { (objects, error) in
             
@@ -75,6 +169,7 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
             }
             
             let postQuery = PFQuery(className: "posts")
+            postQuery.order(byDescending: "createdAt")
             //postQuery.whereKey("uuid", equalTo: postuuid.last!)
             postQuery.findObjectsInBackground (block: { (objects, error) -> Void in
                 if error == nil {
@@ -94,6 +189,8 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
                         self.imageFiles.append(object.value(forKey: "pic") as! PFFile)
                         //self.uuidArray.append(object.value(forKey: "uuid") as! String)
                         self.messages.append(object.value(forKey: "title") as! String)
+                        //let timeString = String (describing: object.value(forKey: "createdAt")!)
+                        self.timeStampArray.append(self.convertToLocalTime(utcTime: object.value(forKey: "createdAt")! as! Date))
                     }
                     
                     self.tableview.reloadData()
@@ -128,45 +225,67 @@ class HomeViewController: UIViewController, UITableViewDelegate, UITableViewData
     }
     public func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
-        let temp = messages.count - (indexPath.row + 1)
+        let cell = tableview.dequeueReusableCell(withIdentifier: "cell") as! PostCell
         
+        imageFiles[indexPath.row].getDataInBackground { (data, error) in
             
-            let cell = tableview.dequeueReusableCell(withIdentifier: "cell") as! PostCell
-            
-            imageFiles[temp].getDataInBackground { (data, error) in
+            if let imageData = data {
                 
-                if let imageData = data {
+                if let downloadedImage = UIImage(data: imageData) {
                     
-                    if let downloadedImage = UIImage(data: imageData) {
-                        
-                        cell.postImage.image = downloadedImage
-                    }
+                    cell.postImage.image = downloadedImage
+                }
+                
+            }
+        }
+        
+        avaArray[indexPath.row].getDataInBackground { (data, error) in
+            
+            if let imageData = data {
+                
+                if let downloadedImage = UIImage(data: imageData) {
                     
+                    cell.profilePic.image = downloadedImage
+                    cell.profilePic.layer.cornerRadius = cell.profilePic.frame.size.width/5
+                    cell.profilePic.clipsToBounds = true
                 }
             }
-            
-            avaArray[temp].getDataInBackground { (data, error) in
-                
-                if let imageData = data {
-                    
-                    if let downloadedImage = UIImage(data: imageData) {
-                        
-                        cell.profilePic.image = downloadedImage
-                    }
-                }
-            }
-            
-            cell.name.text = usernames[temp]
-            cell.message.text = messages[temp]
-            
+        }
         
+        cell.name.text = usernames[indexPath.row]
+        cell.message.text = messages[indexPath.row]
         
-        
+        cell.timeStamp.text = timeStampArray[indexPath.row]
         
         
         return cell
         
     }
+    
+    func prepareDateAndHour() {
+        
+        let formatterDateType1 = DateFormatter()
+        formatterDateType1.dateFormat = "yyyy-MM-dd"
+        
+        let formatterDateType2 = DateFormatter()
+        formatterDateType2.dateFormat = "MMM dd"
+        
+        let formatterHour = DateFormatter()
+        formatterHour.dateFormat = "HH"
+        
+        let formatterMin = DateFormatter()
+        formatterMin.dateFormat = "mm"
+        
+        currentDate = formatterDateType1.string(from: date)
+        currentMonthAndDay = formatterDateType2.string(from: date)
+        
+        resultHour = formatterHour.string(from: date)
+        resultMin = formatterMin.string(from: date)
+        
+        //print("current hour is \(resultHour!)")
+        //print("current date is \(currentDate!) and current Month and Day is \(currentMonthAndDay!) ")
+    }
+
     
     
     

@@ -110,6 +110,7 @@ class PostViewController: UIViewController, UIImagePickerControllerDelegate, UIN
         
         let object = PFObject(className: "posts")
         object["username"] = PFUser.current()!.username
+        
         object["ava"] = PFUser.current()!.value(forKey: "ava") as! PFFile
         
         if (comment.text?.isEmpty)! {

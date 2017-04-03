@@ -5,6 +5,8 @@ target 'Instagram' do
   # Comment the next line if you're not using Swift and don't want to use dynamic frameworks
   use_frameworks!
   pod 'Parse'
+  pod 'AFNetworking', '~> 3.0'
+  pod 'MBProgressHUD'
   # Pods for Instagram
 
   target 'InstagramTests' do

@@ -69,16 +69,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     func login() {
         
-        
         if PFUser.current() != nil {
             let storyboard : UIStoryboard = UIStoryboard(name: "Main", bundle: nil)
             let myTabBar = storyboard.instantiateViewController(withIdentifier: "tabbar") as! UITabBarController
             window?.rootViewController = myTabBar
         }
-        
-        
     }
-
-
 }
 
